@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { ReleaseAnalysis, BobAction, FailureScenario, Issue } from '@/types';
+import { ReleaseAnalysis, BobAction, FailureScenario } from '@/types';
 import { MockAnalysisService } from '@/services/MockAnalysisService';
 import { RealAnalysisService } from '@/services/RealAnalysisService';
 import { MockBobService, BEFORE_CODE_PAYMENT_SERVICE } from '@/services/MockBobService';
@@ -13,6 +13,7 @@ interface DemoContextType {
   analysis: ReleaseAnalysis;
   isFixed: boolean;
   currentCode: string;
+  uploadedFileName: string;
   bobAction: BobAction | null;
   isBobWorking: boolean;
   bobStepIndex: number;
@@ -22,6 +23,7 @@ interface DemoContextType {
   reanalyze: () => Promise<void>;
   resetDemo: () => Promise<void>;
   selectScenario: (scenarioId: string) => Promise<void>;
+  uploadCodeFile: (code: string, fileName: string) => Promise<void>;
   bobLogs: string[];
 }
 
@@ -31,6 +33,7 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
   const [mode, setMode] = useState<'demo' | 'real'>('demo');
   const [isFixed, setIsFixed] = useState(false);
   const [currentCode, setCurrentCode] = useState(BEFORE_CODE_PAYMENT_SERVICE);
+  const [uploadedFileName, setUploadedFileName] = useState('paymentService.ts');
   const [bobAction, setBobAction] = useState<BobAction | null>(null);
   const [isBobWorking, setIsBobWorking] = useState(false);
   const [bobStepIndex, setBobStepIndex] = useState(0);
@@ -65,7 +68,7 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
 
   // Load initial analysis on mount or mode change
   useEffect(() => {
-    currentAnalysisService.analyzeRelease('184', 'payment-service', currentCode).then(setAnalysis);
+    currentAnalysisService.analyzeRelease('184', 'payment-service', currentCode, uploadedFileName).then(setAnalysis);
     currentAnalysisService.runFailureSimulation('http-500').then(setActiveScenario);
   }, [mode]);
 
@@ -74,27 +77,38 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
     setActiveScenario(sc);
   };
 
+  const uploadCodeFile = async (code: string, fileName: string) => {
+    setCurrentCode(code);
+    setUploadedFileName(fileName);
+    setIsFixed(false);
+    setMode('real'); // Switch to Real SAST engine mode for uploaded files
+    setIsReanalyzing(true);
+    const newAnalysis = await realAnalysis.analyzeRelease('UPLOADED', fileName, code, fileName);
+    setAnalysis(newAnalysis);
+    setIsReanalyzing(false);
+  };
+
   const runBobFix = async (issueId: string = 'PAY-142') => {
     setIsBobWorking(true);
     setBobStepIndex(0);
-    setBobLogs(['Initiating IBM Bob AI Agent...']);
+    setBobLogs(['Initiating IBM Bob AI Agent on target code...']);
 
     const steps = [
-      'Analyzed repository AST & dependency graph',
-      'Located vulnerable implementation at src/payments/paymentService.ts:112',
-      'Injecting PaymentProviderError exception handler',
-      'Generating 6 Jest regression tests in tests/payment.test.ts',
-      'Executing test runner... 6 passed, 0 failed',
+      `Analyzed file AST for ${uploadedFileName}`,
+      'Located vulnerabilities & uncaught exception boundaries',
+      'Injecting PaymentProviderError exception handler & sanitizing queries',
+      'Generating unit regression tests in test suite',
+      'Executing test runner... All tests passed',
       'Validating code diff safety'
     ];
 
     for (let i = 0; i < steps.length; i++) {
-      await new Promise((resolve) => setTimeout(resolve, 600));
+      await new Promise((resolve) => setTimeout(resolve, 500));
       setBobStepIndex(i + 1);
       setBobLogs((prev) => [...prev, steps[i]]);
     }
 
-    const result = await currentBobService.fixIssue(issueId, 'payment-service', currentCode);
+    const result = await currentBobService.fixIssue(issueId, uploadedFileName, currentCode);
     setCurrentCode(result.fixedCode);
     setBobAction(result.action);
     setIsFixed(true);
@@ -103,8 +117,8 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
 
   const reanalyze = async () => {
     setIsReanalyzing(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    const newAnalysis = await currentAnalysisService.analyzeRelease('184', 'payment-service', currentCode);
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    const newAnalysis = await currentAnalysisService.analyzeRelease('184', uploadedFileName, currentCode, uploadedFileName);
     setAnalysis(newAnalysis);
     setIsReanalyzing(false);
   };
@@ -112,10 +126,11 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
   const resetDemo = async () => {
     setIsFixed(false);
     setCurrentCode(BEFORE_CODE_PAYMENT_SERVICE);
+    setUploadedFileName('paymentService.ts');
     setBobAction(null);
     setBobStepIndex(0);
     setBobLogs([]);
-    const initialAnalysis = await currentAnalysisService.analyzeRelease('184', 'payment-service', BEFORE_CODE_PAYMENT_SERVICE);
+    const initialAnalysis = await currentAnalysisService.analyzeRelease('184', 'payment-service', BEFORE_CODE_PAYMENT_SERVICE, 'paymentService.ts');
     setAnalysis(initialAnalysis);
   };
 
@@ -127,6 +142,7 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
         analysis,
         isFixed,
         currentCode,
+        uploadedFileName,
         bobAction,
         isBobWorking,
         bobStepIndex,
@@ -136,6 +152,7 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
         reanalyze,
         resetDemo,
         selectScenario,
+        uploadCodeFile,
         bobLogs
       }}
     >

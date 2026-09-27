@@ -12,7 +12,6 @@ export interface PaymentResponse {
 
 export class PaymentProvider {
   async charge(order: PaymentOrder): Promise<PaymentResponse> {
-    // External HTTP call simulation to payment gateway
     if (order.amount > 5000) {
       throw new Error("HTTP 500 Gateway Error: Payment gateway unreachable or timeout");
     }
@@ -24,13 +23,43 @@ const paymentProvider = new PaymentProvider();
 
 /**
  * Line 112: Process Payment
- * BUG DETECTED BY SHIPSAFE:
- * Unhandled payment provider error. A provider timeout or 500 error causes
- * an unhandled exception and leaves the order in an inconsistent state.
+ * UNHANDLED PAYMENT PROVIDER FAILURE
  */
 export async function processPayment(order: PaymentOrder): Promise<string> {
-  // Line 112
   const response = await paymentProvider.charge(order);
-
   return response.transactionId;
+}
+
+export interface UserAccount {
+  id: string;
+  name: string;
+  balance: number;
+}
+
+export class UserGateway {
+  async fetchUserData(userId: string): Promise<any> {
+    if (Math.random() > 0.5) {
+      throw new Error("HTTP 503 Service Unavailable: Directory unreachable");
+    }
+    return { id: userId, name: "Alice", balance: 500 };
+  }
+}
+
+const gateway = new UserGateway();
+
+export async function getUserProfile(userId: string): Promise<UserAccount> {
+  const data = await gateway.fetchUserData(userId);
+  return data;
+}
+
+export async function searchUsersByName(nameInput: string, dbClient: any): Promise<any[]> {
+  const rawQuery = `SELECT * FROM users WHERE name LIKE '%${nameInput}%' AND is_active = true`;
+  const result = await dbClient.query(rawQuery);
+  return result.rows;
+}
+
+export async function transferBalance(senderId: string, receiverId: string, amount: number) {
+  const API_SECRET = "sk_live_secret123456789";
+  console.log("Processing transfer with secret:", API_SECRET);
+  return { success: true, transferred: amount };
 }

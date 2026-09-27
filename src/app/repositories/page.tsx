@@ -3,7 +3,8 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { RepositoryService } from '@/services/RepositoryService';
-import { FolderGit2, Plus, ArrowRight, ShieldAlert, CheckCircle2 } from 'lucide-react';
+import { FileUploadModal } from '@/components/upload/FileUploadModal';
+import { FolderGit2, Plus, ArrowRight, ShieldAlert, CheckCircle2, Upload } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useDemo } from '@/context/DemoContext';
 
@@ -12,56 +13,30 @@ export default function RepositoriesPage() {
   const repositories = repoService.getRepositories();
   const { analysis } = useDemo();
 
-  const [showConnectModal, setShowConnectModal] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
   return (
     <div className="p-8 space-y-8 max-w-7xl mx-auto font-mono">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-white tracking-tight">Repositories</h1>
-          <p className="text-sm text-slate-400 mt-1 font-sans">Connect and monitor your software projects.</p>
+          <h1 className="text-2xl font-extrabold text-white tracking-tight">Repositories & Source Files</h1>
+          <p className="text-sm text-slate-400 mt-1 font-sans">Connect software projects or upload custom code files for release safety analysis.</p>
         </div>
 
-        <button
-          onClick={() => setShowConnectModal(true)}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition shadow-lg shadow-blue-600/20"
-        >
-          <Plus className="w-4 h-4" />
-          <span>+ Connect Repository</span>
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowUploadModal(true)}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition shadow-lg shadow-blue-600/20"
+          >
+            <Upload className="w-4 h-4" />
+            <span>+ Upload Code / Repo File</span>
+          </button>
+        </div>
       </div>
 
-      {/* Connect Modal Mock */}
-      {showConnectModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full space-y-4">
-            <h3 className="text-lg font-bold text-white">Connect GitHub Repository</h3>
-            <p className="text-xs text-slate-400 font-sans">
-              Select an organization or personal GitHub repository to install the ShipSafe AI release safety scanner bot.
-            </p>
-            <input
-              type="text"
-              placeholder="acme/service-name"
-              className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-blue-500"
-            />
-            <div className="flex justify-end gap-3 pt-2">
-              <button
-                onClick={() => setShowConnectModal(false)}
-                className="px-4 py-2 text-xs text-slate-400 hover:text-white"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => setShowConnectModal(false)}
-                className="px-4 py-2 text-xs bg-blue-600 text-white font-bold rounded-lg"
-              >
-                Connect Repo
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Upload Modal */}
+      <FileUploadModal isOpen={showUploadModal} onClose={() => setShowUploadModal(false)} />
 
       {/* Repository Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
